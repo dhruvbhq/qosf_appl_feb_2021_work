@@ -28,13 +28,14 @@ class siqc_root:
 
 class siqc_ckt(siqc_root):
     # Constructor
-    def __init__(self, name, num_qubits):
+    def __init__(self, name, num_qubits, tolerance = 10**(-12)):
         super().__init__(name)
         assert(((np.ceil(num_qubits)) == np.floor(num_qubits) and (num_qubits > 0))), "Number of qubits must be a positive integer"
         self.num_qubits = num_qubits
         self.st_dim = 2**num_qubits
         # Statevector
         self.st_vec = np.zeros(self.st_dim) + np.zeros(self.st_dim)*1j
+        self.tolerance = tolerance
         
     # Auxiliary function to give an n-bit binary expansion
     def get_bin(self, x, n=0):
@@ -47,7 +48,7 @@ class siqc_ckt(siqc_root):
             assert(np.size(st_vec) == self.st_dim), "Incorrect dimension of the state vector"
             assert((np.log2(np.size(st_vec)) > 0)), "Incorrect dimension of the state vector."
             assert((np.ceil(np.log2(np.size(st_vec))) == (np.floor(np.log2(np.size(st_vec)))))), "Incorrect dimension of the state vector."
-            assert(np.abs(1 - np.linalg.norm(np.abs(st_vec))) < 10**(-12)), "Incorrect magnitude of the state vector"
+            assert(np.abs(1 - np.linalg.norm(st_vec)) < self.tolerance), "Incorrect magnitude of the state vector"
             
         def init_state_SIQC_CUSTOM(self, st_vec):
             self.st_vec = st_vec
@@ -59,12 +60,12 @@ class siqc_ckt(siqc_root):
         
         def init_state_SIQC_RANDOM(self, *args):
             random_state = np.random.uniform(-1,1,self.st_dim) + np.zeros(-1,1,self.st_dim)*1j
-            random_state = random_state/np.linalg.norm(np.abs(random_state))
+            random_state = random_state/np.linalg.norm(random_state)
             self.st_vec = random_state
         
         init_method = "init_state_SIQC_" + init_type
         result = eval(init_method + "(self, st_vec)")
-        assert(np.abs(1 - np.linalg.norm(np.abs(self.st_vec))) < 10**(-12))
+        assert(np.abs(1 - np.linalg.norm(self.st_vec)) < self.tolerance)
         
     # Quantum gates method
     def apply_gate(self, gate_type, target, control=None, parametric_gate=None, parameters=None):
@@ -108,17 +109,19 @@ class siqc_ckt(siqc_root):
                         parametric_gate[i][j] = parse_expr(parametric_gate[i][j])            
         
         overall_gate_matrix = 1     
+        # Endianness is little endian, ie |q3 q2 q1 q0>
         if(control == None):
             for i in range(self.num_qubits):
                 if(i == target):
                     overall_gate_matrix = np.kron(
-                        overall_gate_matrix, 
-                        self.return_1qubit_gate_matrix(gate_type, parametric_gate, parameters)
+                        self.return_1qubit_gate_matrix(gate_type, parametric_gate, parameters),
+                        overall_gate_matrix                        
                         ) # TODO
                 else:
                     overall_gate_matrix = np.kron(
-                        overall_gate_matrix,
-                        self.return_1qubit_gate_matrix(gate_type="I"))
+                        self.return_1qubit_gate_matrix(gate_type="I"),
+                        overall_gate_matrix
+                        )
                     
                 assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim))
                 
@@ -126,7 +129,7 @@ class siqc_ckt(siqc_root):
             
             
         self.st_vec = np.matmul(overall_gate_matrix, self.st_vec)
-        assert(np.abs(1 - np.linalg.norm(np.abs(self.st_vec))) < 10**(-12)), "State vector normalization error."
+        assert(np.abs(1 - np.linalg.norm(self.st_vec)) < self.tolerance), "State vector normalization error."
             
     # Circuit execution method
     def execute_ckt(self, program):
@@ -144,12 +147,12 @@ class siqc_ckt(siqc_root):
         assert((reporting_type == "COUNT") or (reporting_type == "PERCENT")), "Unsupported reporting type."
         # Convert state vector into vector of probabilities of measuring a basis state
         prob_vec = np.power(np.abs(self.st_vec), 2)
-        assert(np.abs(1 - np.sum(prob_vec)) < 10**(-12)), "PDF normalization error."
+        assert(np.abs(1 - np.sum(prob_vec)) < self.tolerance), "PDF normalization error."
         # Convert the probability distribution into a cumulative distribution function
         cdf = prob_vec
         for i in range(1, np.shape(cdf)[0]):
             cdf[i] += cdf[i-1]
-        assert(np.abs(1 - cdf[-1]) < 10**(-12)), "CDF normalization error"
+        assert(np.abs(1 - cdf[-1]) < self.tolerance), "CDF normalization error"
         
         
         # Initialize the results dictionary
