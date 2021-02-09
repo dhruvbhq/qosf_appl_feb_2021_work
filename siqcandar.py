@@ -11,6 +11,7 @@ Motivation: QOSF February 2021 screening task.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from sympy.parsing.sympy_parser import parse_expr
 #------------------------------------------------
 
 # Classes
@@ -66,37 +67,63 @@ class siqc_ckt(siqc_root):
         assert(np.abs(1 - np.linalg.norm(np.abs(self.st_vec))) < 10**(-12))
         
     # Quantum gates method
-    def apply_gate(self, gate, target, control=None):
-        assert((gate == "H") or (gate == "X") or (gate == "Y") or (gate == "Z") or (gate == "I")), "Unsupported Quantum Gate type."
+    def apply_gate(self, gate_type, target, control=None, parametric_gate=None, parameters=None):
+        assert((gate_type == "H") or 
+               (gate_type == "X") or 
+               (gate_type == "Y") or 
+               (gate_type == "Z") or 
+               (gate_type == "I") or
+               (gate_type == "PARAMETRIC")), "Unsupported Quantum Gate type."
         
-        # Single qubit gates
-        # Identity
-        I_1 = np.array([[1, 0], [0, 1]])
-        # Hadamard
-        H_1 = np.array([[1/np.sqrt(2), 1/np.sqrt(2)], [1/np.sqrt(2), -1/np.sqrt(2)]])
-        # Pauli X
-        NOT_1 = np.array([[0, 1], [1, 0]])
-        # Pauli Z
-        PHASE_1 = np.array([[1, 0], [0, -1]])
-        # Pauli Y
-        ROT_Y_1 = np.array([[0, -1], [1, 0]])*1j
+        def return_1qubit_gate_matrix(self, gate_type, parametric_gate=None, parameters=None):
+            
         
-        gate_map = {
-            "H" : H_1,
-            "X" : NOT_1,
-            "Y" : ROT_Y_1,
-            "Z" : PHASE_1,
-            "I" : I_1}
+            # Single qubit gates
+            # Identity
+            I_1 = np.array([[1, 0], [0, 1]])
+            # Hadamard
+            H_1 = np.array([[1/np.sqrt(2), 1/np.sqrt(2)], [1/np.sqrt(2), -1/np.sqrt(2)]])
+            # Pauli X
+            NOT_1 = np.array([[0, 1], [1, 0]])
+            # Pauli Z
+            PHASE_1 = np.array([[1, 0], [0, -1]])
+            # Pauli Y
+            ROT_Y_1 = np.array([[0, -1], [1, 0]])*1j
         
-        overall_gate_matrix = 1        
+            gate_map = {
+                "H" : H_1,
+                "X" : NOT_1,
+                "Y" : ROT_Y_1,
+                "Z" : PHASE_1,
+                "I" : I_1}
+            if(gate_type != "PARAMETRIC"):
+                return gate_map[gate_type]
+            else:
+                for i in range(2):
+                    for j in range(2):
+                        # Replace the parameters with their values
+                        for parameter in parameters:
+                            parametric_gate[i][j] = parametric_gate[i][j].replace(parameter, parameters[parameter])
+                        # And then evaluate the expression
+                        parametric_gate[i][j] = parse_expr(parametric_gate[i][j])            
+        
+        overall_gate_matrix = 1     
         if(control == None):
             for i in range(self.num_qubits):
                 if(i == target):
-                    overall_gate_matrix = np.kron(overall_gate_matrix, gate_map[gate]) # TODO
+                    overall_gate_matrix = np.kron(
+                        overall_gate_matrix, 
+                        self.return_1qubit_gate_matrix(gate_type, parametric_gate, parameters)
+                        ) # TODO
                 else:
-                    overall_gate_matrix = np.kron(overall_gate_matrix, I_1)
+                    overall_gate_matrix = np.kron(
+                        overall_gate_matrix,
+                        self.return_1qubit_gate_matrix(gate_type="I"))
                     
-            assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim))
+                assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim))
+                
+
+            
             
         self.st_vec = np.matmul(overall_gate_matrix, self.st_vec)
         assert(np.abs(1 - np.linalg.norm(np.abs(self.st_vec))) < 10**(-12)), "State vector normalization error."
@@ -110,7 +137,7 @@ class siqc_ckt(siqc_root):
             if not "control" in step:
                 step["control"] = None
                 
-            self.apply_gate(step["gate"], step["target"], step["control"])
+            self.apply_gate(step["gate_type"], step["target"], step["control"], step["parametric_gate"], step["parameters"])
       
     # Circuit measurement method
     def measure_ckt(self, num_shots, reporting_type="COUNT"):
@@ -176,5 +203,18 @@ class siqc_ckt(siqc_root):
         plt.title("Basis state amplitudes and their phases.")
         plt.show()    
         print("Height is equal to magnitude of the probability amplitude. Phase is depicted by colour. Blue means a positive phase; red stands for negative phase and black colour depicts a real number. A higher red/blue colour intensity means a higher absolute phase angle.")
+        
+    def give_bloch_angles(self):
+        # Returns the angles theta and phi (in radian) for the Bloch vector 
+        # corresponding  to the current state (only if the state is a 1 qubit state)
+        # Under development
+        if(self.num_qubits == 1):
+            r0 = np.abs(self.st_vec[0])
+            angle0 = np.angle(self.st_vec[0])
+            r1 = np.abs(self.st_vec[1])
+            angle1 = np.angle(self.st_vec[1])
+            theta = 2*np.arccos(r0)
+            phi = angle1 - angle0
+            return theta, phi
 
 #------------------------------------------------
