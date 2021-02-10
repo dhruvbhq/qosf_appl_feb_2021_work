@@ -59,7 +59,7 @@ class siqc_ckt(siqc_root):
             self.st_vec = ground_state
         
         def init_state_SIQC_RANDOM(self, *args):
-            random_state = np.random.uniform(-1,1,self.st_dim) + np.zeros(-1,1,self.st_dim)*1j
+            random_state = np.random.uniform(-1,1,self.st_dim) + np.random.uniform(-1,1,self.st_dim)*1j
             random_state = random_state/np.linalg.norm(random_state)
             self.st_vec = random_state
         
@@ -114,12 +114,12 @@ class siqc_ckt(siqc_root):
             for i in range(self.num_qubits):
                 if(i == target):
                     overall_gate_matrix = np.kron(
-                        self.return_1qubit_gate_matrix(gate_type, parametric_gate, parameters),
+                        return_1qubit_gate_matrix(self, gate_type, parametric_gate, parameters),
                         overall_gate_matrix                        
                         ) # TODO
                 else:
                     overall_gate_matrix = np.kron(
-                        self.return_1qubit_gate_matrix(gate_type="I"),
+                        return_1qubit_gate_matrix(self, gate_type="I"),
                         overall_gate_matrix
                         )
                     
@@ -139,6 +139,11 @@ class siqc_ckt(siqc_root):
         for step in program:
             if not "control" in step:
                 step["control"] = None
+            assert(("parametric_gate" in step) == ("parameters" in step))
+            if not "parametric_gate" in step:
+                step["parametric_gate"] = None
+            if not "parameters" in step:
+                step["parameters"] = None
                 
             self.apply_gate(step["gate_type"], step["target"], step["control"], step["parametric_gate"], step["parameters"])
       
