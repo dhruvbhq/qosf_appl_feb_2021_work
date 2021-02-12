@@ -11,29 +11,67 @@ This file contains the test scenarios for the SIQCANDAR simulator program.
 #---------------------------------------------------
 import numpy as np
 import siqcandar
+import time
 #---------------------------------------------------
 
 num_tests = 0
+tic = 0
 
 def launch_tests():
     # Endianness is little endian, ie |q3 q2 q1 q0>
+    # Some useful defines
+    ket0 = np.array([1, 0]) # |0>
+    ket1 = np.array([0, 1]) # |1>
     
-
+    ketp = (1/np.sqrt(2))*(ket0 + ket1) # |+>
+    ketm = (1/np.sqrt(2))*(ket0 - ket1) # |->
+    
+    ket00 = np.kron(ket0, ket0)
+    ket01 = np.kron(ket0, ket1)
+    ket10 = np.kron(ket1, ket0)
+    ket11 = np.kron(ket1, ket1)
+    
+    ket0p = np.kron(ket0, ketp)
+    ket1p = np.kron(ket1, ketp)
+    ketp0 = np.kron(ketp, ket0)
+    ketp1 = np.kron(ketp, ket1)
+    
+    ket0m = np.kron(ket0, ketm)
+    ket1m = np.kron(ket1, ketm)
+    ketm0 = np.kron(ketm, ket0)
+    ketm1 = np.kron(ketm, ket1)
+    
+    ket000p = np.kron(ket0, np.kron(ket0, np.kron(ket0, ketp)))
+    ket00p0 = np.kron(ket0, np.kron(ket0, np.kron(ketp, ket0)))
+    ket0p00 = np.kron(ket0, np.kron(ketp, np.kron(ket0, ket0)))
+    ketp000 = np.kron(ketp, np.kron(ket0, np.kron(ket0, ket0)))
+    
+    ket00pp = np.kron(ket0, np.kron(ket0, np.kron(ketp, ketp)))
+    ket0p0p = np.kron(ket0, np.kron(ketp, np.kron(ket0, ketp)))
+    ketp00p = np.kron(ketp, np.kron(ket0, np.kron(ket0, ketp)))
+    ket0pp0 = np.kron(ket0, np.kron(ketp, np.kron(ketp, ket0)))
+    ketp0p0 = np.kron(ketp, np.kron(ket0, np.kron(ketp, ket0)))
+    ketpp00 = np.kron(ketp, np.kron(ketp, np.kron(ket0, ket0)))
+    
+    ketpp = np.kron(ketp, ketp)
+    ketpppp = np.kron(ketp, np.kron(ketp, np.kron(ketp, ketp)))
     
     def print_init_tests():
+        global tic
         print("Running tests ...")
         print("---------------------------------------------------")
+        tic = time.time()
         return
     
     def pre_test_task():
         global num_tests
         num_tests = num_tests + 1
-        print("Running test", num_tests)
+        print("Running test ", num_tests, " -------------------------------------")
         return
     
     def print_report_tests():
          print("---------------------------------------------------")
-         print("Tests passed. Number of tests run = ", num_tests, ". If you see this line without encountering any errors, it means the tests have passed.")
+         print("Tests passed. Number of tests run = ", num_tests, ". Time consumed = ", time.time() - tic, ". If you see this line without encountering any errors, it means the tests have passed.")
     
     print_init_tests()
     
@@ -204,7 +242,394 @@ def launch_tests():
         assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 16 failed."       
     
     #Test 17 - Quantum gates and measurement - Apply H to qubit 0 of 2 qubit state
+    pre_test_task()
+    #To the state |00>
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=2)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket0p
+    program = [{"gate_type" : "H", "target" : 0}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 17 failed."
+        
+    q1.measure_ckt(num_shots=1000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"00" : 500, "01" : 500, "10" : 0, "11" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 17 failed."
+        
     #Test 18 - Quantum gates and measurement - Apply H to qubit 1 of 2 qubit state
+    pre_test_task()
+    #To the state |01>
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=2)
+    q1.init_state(init_type="CUSTOM", st_vec = ket01)
+    psi1 = ketp1
+    program = [{"gate_type" : "H", "target" : 1}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 18 failed."
+        
+    q1.measure_ckt(num_shots=1000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"00" : 0, "01" : 500, "10" : 0, "11" : 500}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 18 failed."
+    #Now to the state |10>
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=2)
+    q1.init_state(init_type="CUSTOM", st_vec = ket10)
+    psi1 = ketm0
+    program = [{"gate_type" : "H", "target" : 1}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 18 failed."
+        
+    q1.measure_ckt(num_shots=1000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"00" : 500, "01" : 0, "10" : 500, "11" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 18 failed."
+        
+    #Test 19 - Quantum gates and measurement -	Apply H to qubits 0 and 1 of 2 qubit state
+    #To the state |00>
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=2)
+    q1.init_state(init_type="GROUND")
+    psi1 = ketpp
+    program = [{"gate_type" : "H", "target" : 0}, {"gate_type" : "H", "target" : 1}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 19 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"00" : 500, "01" : 500, "10" : 500, "11" : 500}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 19 failed."
+        
+    #Test 20 - Quantum gates and measurement - Apply H to qubit 0 of 4 qubit state
+    #To the state |0000>
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket000p
+    program = [{"gate_type" : "H", "target" : 0}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 20 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 1000, 
+                "0001" : 1000,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 20 failed."
+        
+    #Test 21 - Quantum gates and measurement - Apply H to qubit 1 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket00p0
+    program = [{"gate_type" : "H", "target" : 1}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 21 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 1000, 
+                "0001" : 0,
+                "0010" : 1000,
+                "0011" : 0,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 21 failed."
+        
+    #Test 22 - Quantum gates and measurement - Apply H to qubit 2 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket0p00
+    program = [{"gate_type" : "H", "target" : 2}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 22 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 1000, 
+                "0001" : 0,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 1000, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 22 failed."
+        
+    #Test 23 - Quantum gates and measurement - Apply H to qubit 3 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ketp000
+    program = [{"gate_type" : "H", "target" : 3}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 23 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 1000, 
+                "0001" : 0,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 1000, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 23 failed."
+        
+    #Test 24 - Quantum gates and measurement - Apply H to qubits 0 and 1 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket00pp
+    program = [{"gate_type" : "H", "target" : 0}, {"gate_type" : "H", "target" : 1}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 24 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 500,
+                "0010" : 500,
+                "0011" : 500,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 24 failed."
+        
+    #Test 25 - Quantum gates and measurement - Apply H to qubits 1 and 2 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket0pp0
+    program = [{"gate_type" : "H", "target" : 1}, {"gate_type" : "H", "target" : 2}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 25 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 0,
+                "0010" : 500,
+                "0011" : 0,
+                "0100" : 500, 
+                "0101" : 0,
+                "0110" : 500,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 25 failed."
+        
+    #Test 26 - Quantum gates and measurement - Apply H to qubits 2 and 3 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ketpp00
+    program = [{"gate_type" : "H", "target" : 2}, {"gate_type" : "H", "target" : 3}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 26 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 0,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 500, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 500, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 500, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 26 failed."
+        
+    #Test 27 - Quantum gates and measurement - Apply H to qubits 0 and 2 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ket0p0p
+    program = [{"gate_type" : "H", "target" : 0}, {"gate_type" : "H", "target" : 2}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 27 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 500,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 500, 
+                "0101" : 500,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 0, 
+                "1001" : 0,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 27 failed."
+        
+    #Test 28 - Quantum gates and measurement - Apply H to qubits 1 and 3 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ketp0p0
+    program = [{"gate_type" : "H", "target" : 1}, {"gate_type" : "H", "target" : 3}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 28 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 0,
+                "0010" : 500,
+                "0011" : 0,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 500, 
+                "1001" : 0,
+                "1010" : 500,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 28 failed."
+        
+    #Test 29 - Quantum gates and measurement - Apply H to qubits 0 and 3 of 4 qubit state
+    pre_test_task()
+    q1 = siqcandar.siqc_ckt(name="q1", num_qubits=4)
+    q1.init_state(init_type="GROUND")
+    psi1 = ketp00p
+    program = [{"gate_type" : "H", "target" : 0}, {"gate_type" : "H", "target" : 3}]
+    q1.execute_ckt(program)
+    for i in range(len(psi1)):
+        assert(np.linalg.norm(psi1[i] - q1.st_vec[i]) < 10**(-8)), "Test 29 failed."
+        
+    q1.measure_ckt(num_shots=2000)
+    #If measured frequency are off by more than 10% compared to expected 
+    #frequency, issue an error
+    exp_prob = {"0000" : 500, 
+                "0001" : 500,
+                "0010" : 0,
+                "0011" : 0,
+                "0100" : 0, 
+                "0101" : 0,
+                "0110" : 0,
+                "0111" : 0,
+                "1000" : 500, 
+                "1001" : 500,
+                "1010" : 0,
+                "1011" : 0,
+                "1100" : 0, 
+                "1101" : 0,
+                "1110" : 0,
+                "1111" : 0}
+    for key in exp_prob:
+        assert(np.abs(q1.results[key] - exp_prob[key]) <= 0.1*exp_prob[key]), "Test 29 failed."
 
 
     print_report_tests()
