@@ -122,13 +122,13 @@ class siqc_ckt(siqc_root):
                         return_1qubit_gate_matrix(self, gate_type="I"),
                         overall_gate_matrix
                         )
-                    
-                assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim))
-                
-
-            
-            
+                #print("TODO DHRUV, overall gate matrix = ", overall_gate_matrix)    
+        
+        assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim)), "Gate dimensions is in error."
+        #print("TODO in apply_gate 1. state before gate = ", self.st_vec, "overall_gate_matrix = ", overall_gate_matrix)                
+        #print("TODO in apply_gate 1. state before gate = ", self.st_vec)                
         self.st_vec = np.matmul(overall_gate_matrix, self.st_vec)
+        #print("TODO in apply_gate 2. state after gate = ", self.st_vec)
         assert(np.abs(1 - np.linalg.norm(self.st_vec)) < self.tolerance), "State vector normalization error."
             
     # Circuit execution method
@@ -157,8 +157,7 @@ class siqc_ckt(siqc_root):
         cdf = prob_vec
         for i in range(1, np.shape(cdf)[0]):
             cdf[i] += cdf[i-1]
-        assert(np.abs(1 - cdf[-1]) < self.tolerance), "CDF normalization error"
-        
+        assert(np.abs(1 - cdf[-1]) < self.tolerance), "CDF normalization error"        
         
         # Initialize the results dictionary
         self.results = {}
@@ -168,14 +167,16 @@ class siqc_ckt(siqc_root):
             
         for n in range(num_shots):
             r = np.random.uniform(0, 1)
-            incremented = 0
-            for i in range(np.shape(cdf)[0]):
-                key = self.get_bin(i, self.num_qubits)
-                if((r >= cdf[i]) and (r < cdf[i+1])):
+            assigned = 0
+            for i in range(np.shape(cdf)[0] - 1):
+                if((r <= cdf[0]) and (assigned == 0)):
+                    key = self.get_bin(0, self.num_qubits)
                     self.results[key] += 1
-                    incremented = 1
-            if(incremented == 0):
-                self.results[self.get_bin(np.shape(cdf)[0]-1, self.num_qubits)] += 1
+                    assigned = 1
+                elif((r > cdf[i]) and (r <= cdf[i+1]) and (assigned == 0)):
+                    key = self.get_bin(i+1, self.num_qubits)
+                    self.results[key] += 1
+                    assigned = 1
                 
         if(reporting_type == "PERCENT"):
             for key in self.results:
