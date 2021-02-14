@@ -11,7 +11,8 @@ Motivation: QOSF February 2021 screening task.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sympy.parsing.sympy_parser import parse_expr
+#from sympy.parsing.sympy_parser import parse_expr
+from sympy import *
 #------------------------------------------------
 
 # Classes
@@ -74,11 +75,11 @@ class siqc_ckt(siqc_root):
                (gate_type == "Y") or 
                (gate_type == "Z") or 
                (gate_type == "I") or
+               (gate_type == "S") or
+               (gate_type == "T") or
                (gate_type == "PARAMETRIC")), "Unsupported Quantum Gate type."
         
         def return_1qubit_gate_matrix(self, gate_type, parametric_gate=None, parameters=None):
-            
-        
             # Single qubit gates
             # Identity
             I_1 = np.array([[1, 0], [0, 1]])
@@ -90,23 +91,34 @@ class siqc_ckt(siqc_root):
             PHASE_1 = np.array([[1, 0], [0, -1]])
             # Pauli Y
             ROT_Y_1 = np.array([[0, -1], [1, 0]])*1j
-        
+            # S gate
+            S_1 = np.array([[1,0],[0,0]]) + (np.array([[0,0],[0,1]])*1j)
+            # T gate
+            T_1 = np.array([[1,0],[0,1/np.sqrt(2)]]) + (np.array([[0,0],[0,-1/np.sqrt(2)]])*1j)
+            
             gate_map = {
                 "H" : H_1,
                 "X" : NOT_1,
                 "Y" : ROT_Y_1,
                 "Z" : PHASE_1,
-                "I" : I_1}
+                "I" : I_1,
+                "S" : S_1,
+                "T" : T_1}
             if(gate_type != "PARAMETRIC"):
                 return gate_map[gate_type]
             else:
+                #Parsing the parametric gate expression
                 for i in range(2):
                     for j in range(2):
                         # Replace the parameters with their values
-                        for parameter in parameters:
-                            parametric_gate[i][j] = parametric_gate[i][j].replace(parameter, parameters[parameter])
+                        for parameter in parameters:                       
+                            replace_by_me = str(parameters[parameter])
+                            parametric_gate[i][j] = parametric_gate[i][j].replace(parameter, replace_by_me)
                         # And then evaluate the expression
-                        parametric_gate[i][j] = parse_expr(parametric_gate[i][j])            
+                        parametric_gate[i][j] = parse_expr(parametric_gate[i][j])   
+                        parametric_gate[i][j] = parametric_gate[i][j].evalf()   
+                        parametric_gate[i][j] = complex(parametric_gate[i][j])
+                return parametric_gate
         
         overall_gate_matrix = 1     
         # Endianness is little endian, ie |q3 q2 q1 q0>
@@ -121,14 +133,10 @@ class siqc_ckt(siqc_root):
                     overall_gate_matrix = np.kron(
                         return_1qubit_gate_matrix(self, gate_type="I"),
                         overall_gate_matrix
-                        )
-                #print("TODO DHRUV, overall gate matrix = ", overall_gate_matrix)    
+                        )   
         
-        assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim)), "Gate dimensions is in error."
-        #print("TODO in apply_gate 1. state before gate = ", self.st_vec, "overall_gate_matrix = ", overall_gate_matrix)                
-        #print("TODO in apply_gate 1. state before gate = ", self.st_vec)                
+        assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim)), "Gate dimensions is in error."               
         self.st_vec = np.matmul(overall_gate_matrix, self.st_vec)
-        #print("TODO in apply_gate 2. state after gate = ", self.st_vec)
         assert(np.abs(1 - np.linalg.norm(self.st_vec)) < self.tolerance), "State vector normalization error."
             
     # Circuit execution method
@@ -152,7 +160,7 @@ class siqc_ckt(siqc_root):
         assert((reporting_type == "COUNT") or (reporting_type == "PERCENT")), "Unsupported reporting type."
         # Convert state vector into vector of probabilities of measuring a basis state
         prob_vec = np.power(np.abs(self.st_vec), 2)
-        assert(np.abs(1 - np.sum(prob_vec)) < self.tolerance), "PDF normalization error."
+        assert(np.abs(1 - np.sum(prob_vec)) < self.tolerance), "PDF normalization error. pdf = "+str(prob_vec)
         # Convert the probability distribution into a cumulative distribution function
         cdf = prob_vec
         for i in range(1, np.shape(cdf)[0]):
