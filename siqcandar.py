@@ -127,13 +127,95 @@ class siqc_ckt(siqc_root):
                 if(i == target):
                     overall_gate_matrix = np.kron(
                         return_1qubit_gate_matrix(self, gate_type, parametric_gate, parameters),
-                        overall_gate_matrix                        
-                        ) # TODO
+                        overall_gate_matrix)
                 else:
                     overall_gate_matrix = np.kron(
                         return_1qubit_gate_matrix(self, gate_type="I"),
-                        overall_gate_matrix
-                        )   
+                        overall_gate_matrix)
+        else:
+            #Controlled gate case
+            temp_gate = np.zeros([self.st_dim, self.st_dim]) + np.zeros([self.st_dim, self.st_dim])*1j
+            #if the partial term in the matrix is of the form 
+            #I kron ... kron (control_qubit) kron I ... kron (target_op) kron I ... kron I
+            #then, denote them as  head  | control_qubit | mid | target_op | trail
+            #control and target can be each others' positions as well; assume that this connotation still holds
+            head_size = self.num_qubits - 1 - max(control, target)
+            mid_size = abs(control - target) - 1
+            trail_size = min(control, target)
+            #k - index over control states: assuming that control qubit is a single qubit
+            for k in range(2):
+                overall_gate_matrix = 1
+                mid = 1
+                head = 1
+                #appending the trail first
+                for t in range(trail_size):
+                    overall_gate_matrix = np.kron(
+                        return_1qubit_gate_matrix(self, gate_type="I"),
+                        overall_gate_matrix)
+                #form the mid beforehand
+                for m in range(mid_size):
+                    mid = np.kron(
+                        return_1qubit_gate_matrix(self, gate_type="I"),
+                        mid)
+                #forming the head beforehand
+                for h in range(head_size):
+                    head = np.kron(
+                        return_1qubit_gate_matrix(self, gate_type="I"),
+                        head)
+                if(k == 1):
+                    #Control is |1>
+                    if(target < control):
+                        #append actual single qubit unitary
+                        overall_gate_matrix = np.kron(
+                            return_1qubit_gate_matrix(self, gate_type, parametric_gate, parameters),
+                            overall_gate_matrix)
+                    else:
+                        #append state of control qubit |1><1|
+                        overall_gate_matrix = np.kron(
+                            np.outer([0,1],[0,1]),
+                            overall_gate_matrix)
+                    #append the mid section
+                    overall_gate_matrix = np.kron(mid, overall_gate_matrix)
+                    #append the remaining control or target operator
+                    if(target < control):
+                        #append state of control qubit |1><1|
+                        overall_gate_matrix = np.kron(
+                            np.outer([0,1],[0,1]),
+                            overall_gate_matrix)                            
+                    else:
+                        #append actual single qubit unitary
+                        overall_gate_matrix = np.kron(
+                            return_1qubit_gate_matrix(self, gate_type, parametric_gate, parameters),
+                            overall_gate_matrix)
+                else:
+                    #Control is |0>.
+                    if(target < control):
+                        #append identity
+                        overall_gate_matrix = np.kron(
+                            return_1qubit_gate_matrix(self, gate_type="I"),
+                            overall_gate_matrix)
+                    else:
+                        #append state of control qubit |0><0|
+                        overall_gate_matrix = np.kron(
+                            np.outer([1,0],[1,0]),
+                            overall_gate_matrix)
+                    #append the mid section
+                    overall_gate_matrix = np.kron(mid, overall_gate_matrix)
+                    #append the remaining control or target operator
+                    if(target < control):
+                        #append state of control qubit |0><0|
+                        overall_gate_matrix = np.kron(
+                            np.outer([1,0],[1,0]),
+                            overall_gate_matrix)                            
+                    else:
+                        #append identity
+                        overall_gate_matrix = np.kron(
+                            return_1qubit_gate_matrix(self, gate_type = "I"),
+                            overall_gate_matrix)
+                #Finally, add the head
+                overall_gate_matrix = np.kron(head, overall_gate_matrix)
+                temp_gate += overall_gate_matrix
+            overall_gate_matrix = temp_gate
         
         assert(np.shape(overall_gate_matrix) == (self.st_dim, self.st_dim)), "Gate dimensions is in error."               
         self.st_vec = np.matmul(overall_gate_matrix, self.st_vec)
