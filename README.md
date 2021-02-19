@@ -84,11 +84,11 @@ Read the following points to find out how I have implemented the requested featu
 
 #### File description:
 
-~Code
+##### Code
 
 siqcandar.py - source code for the simulator
 
-~Tests
+###### Tests
 
 test_plan.xlsx - Tested scenarios in an excel sheet
 
@@ -98,7 +98,7 @@ tests_execute.ipynb - Showing that the tests are passing
 
 tests_execute.html - html version of the above notebook
 
-~Examples and demonstration
+###### Examples and demonstration
 
 demo1.ipynb - demonstrating usage and main capabilities of the simulator
 
