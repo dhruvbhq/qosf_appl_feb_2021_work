@@ -504,7 +504,7 @@ class siqc_ckt(siqc_root):
             self.op_hist.append(step)
       
     # Circuit measurement method
-    def measure_ckt(self, num_shots, reporting_type="COUNT"):
+    def measure_ckt(self, num_shots, reporting_type="COUNT", quiet=False):
         """
         Performs multi-shot measurement of all the qubits and prints the 
         results. Implements a logic for weighted random sampling from an 
@@ -518,6 +518,9 @@ class siqc_ckt(siqc_root):
         reporting_type : str, optional
             Specifies whether to report the results as "COUNT" or "PERCENT".
             The default is "COUNT".
+        quiet : Bool, optional
+            Specifies whether to print the measurement results or not. 
+            Regardless of this argument, they are stored in self.results
 
         Returns
         -------
@@ -556,8 +559,8 @@ class siqc_ckt(siqc_root):
         if(reporting_type == "PERCENT"):
             for key in self.results:
                 self.results[key] = self.results[key] * 100 / num_shots
-                
-        print("Results (", reporting_type, "):", self.results)
+        if(quiet == False):        
+            print("Results (", reporting_type, "):", self.results)
         self.op_hist.append({"measure" : ""})
         
     def plot_measure_results(self):
@@ -608,6 +611,7 @@ class siqc_ckt(siqc_root):
             indices.append(key)
         plt.bar(indices, st_vec_amp, color=color)
         plt.title("Basis state amplitudes and their phases.")
+        plt.xticks(rotation=45)
         plt.show()    
         print("Height is equal to magnitude of the probability amplitude.",
               "Phase is depicted by colour. Blue means a positive phase;",
