@@ -76,11 +76,11 @@ Read the following points to find out how I have implemented the requested featu
 
 #### Requirements:
 
-numpy
-matplotlib
-sympy
-turtle
-time
+* numpy
+* matplotlib
+* sympy
+* turtle
+* time
 
 #### File description:
 
