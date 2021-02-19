@@ -4,7 +4,7 @@ Created on Fri Feb 19 20:39:38 2021
 
 Motivation: An example of the circuit drawing function of SIQCANDAR simulator.
 
-@author: dbhatnag
+@author: Dhruv Bhatnagar
 """
 
 #The simulator uses python turtle to implement a circuit drawer for the 
