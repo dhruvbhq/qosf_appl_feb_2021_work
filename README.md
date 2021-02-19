@@ -6,7 +6,8 @@ This is my submission to the screening task for QOSF mentorship program (applica
 #### Screening Task attempted - Task 3
 #### Task requirements
 
-The task description goes as follows:
+The task description (provided by QOSF) goes as follows:
+
 "Learning by doing: the best way to understand the basics of quantum computation is to implement a quantum circuit simulator. This task is suitable both for people from computer sciences who want to learn about quantum computing, and for people from math/physics who want to exercise coding
 
 It is expected that simulator can perform following tasks:
@@ -19,7 +20,7 @@ It is expected that simulator can perform following tasks:
 
 #### References
 
-The following resources were shared with this screening task, and were immensely helpful as references:
+The following resources were shared by QOSF with this screening task, and were immensely helpful as references:
 
 www.github.com/quantastica/qosf-mentorship/blob/master/qosf-simulator-task.ipynb
 
